@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import time
 from flask import g
 
 
@@ -48,4 +49,22 @@ class CogCompLoggerDB:
         data = cursor.fetchone()
         if data is None:
             return False
-        print(data[0])
+        # Check if the API request is legal
+        if entry_key != data[0]:
+            return False
+        # Increment Counter
+        cursor.execute("UPDATE counter SET value = value + 1 WHERE name=?", [entry_name])
+        # Log query content
+        t = int(time.time())
+        query = 'INSERT INTO {} VALUES ("{}", {})'.format(entry_name, content, t)
+        cursor.execute(query)
+        db.commit()
+        return True
+
+    # TODO: Finish counter, return a int
+    def get_entry_count(self, entry_name):
+        pass
+
+    # TODO: get log contents, enforce correct key
+    def get_entry_logs(self, entry_name, entry_key):
+        pass

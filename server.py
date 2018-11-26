@@ -64,21 +64,48 @@ class CogCompLogger:
                 'status': 'FAILURE',
                 'action': 'register'
             }
+            # Enforce login state
+            if not self.check_login(args_dict):
+                return json.dumps(ret_form)
             if 'entry_name' not in args_dict or 'entry_key' not in args_dict:
                 return json.dumps(ret_form)
-            # TODO WHERE LEFT OFF
-            self.db.create_new_entry(args_dict['entry_name'], args_dict['entry_key'])
+            status = self.db.create_new_entry(args_dict['entry_name'], args_dict['entry_key'])
+            if status:
+                ret_form['status'] = 'SUCCESS'
+            return json.dumps(ret_form)
 
         return json.dumps(invalid_form)
+
+    # TODO: Other queries? content?
+    def handle_query(self):
+        args_dict = request.args
+        ret_form = {
+            'action': 'INVALID',
+            'result': 'none'
+        }
+        if 'action' not in args_dict:
+            return
+
+        if args_dict['action'] == 'count':
+            ret_form['action'] = 'count'
+            ret_form['result'] = 0
+            if 'entry_name' not in args_dict:
+                return json.dumps(ret_form)
+            ret_form['result'] = self.db.get_entry_count(args_dict['entry_name'])
+            return json.dumps(ret_form)
+
+        return json.dumps(ret_form)
 
     def start(self, localhost=False, port=80):
         self.app.add_url_rule("/", "", self.handle_root, methods=['POST', 'GET'])
         self.app.add_url_rule("/manage", "manage", self.handle_manage, methods=['POST', 'GET'])
+        self.app.add_url_rule("/query", "query", self.handle_query, methods=['POST', 'GET'])
         if localhost:
             self.app.run(ssl_context='adhoc', port=port)
         else:
             self.app.run(host='0.0.0.0', port=port, ssl_context='adhoc')
 
+    # TODO: Grace exist (release db etc.)
     def end(self):
         exit(0)
 
