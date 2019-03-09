@@ -3,6 +3,7 @@ import json
 
 from flask import Flask
 from flask import request
+from flask import send_from_directory
 from flask_cors import CORS
 from database import CogCompLoggerDB
 
@@ -34,11 +35,20 @@ class CogCompLogger:
             return True
         return False
 
-    def handle_root(self):
-        return "No action is taken."
+    @staticmethod
+    def handle_root(path):
+        if path == "" or path is None:
+            path = "index.html"
+        return send_from_directory('./frontend', path)
+
+    @staticmethod
+    def handle_index():
+        return send_from_directory('./frontend', 'index.html')
 
     def handle_manage(self):
-        args_dict = request.args
+        args_dict = request.values.to_dict()
+        if request.get_json() is not None:
+            args_dict.update(request.get_json())
         invalid_form = {
             'status': 'FAILURE',
             'action': 'INVALID'
@@ -59,17 +69,32 @@ class CogCompLogger:
                 ret_form['cookie'] = self.secret_md5
             return json.dumps(ret_form)
 
-        if args_dict['action'] == 'register':
+        if args_dict['action'] == 'get_all_records':
             ret_form = {
                 'status': 'FAILURE',
-                'action': 'register'
+                'action': 'get_all_records'
+            }
+            if not self.check_login(args_dict):
+                return json.dumps(ret_form)
+            records = self.db.get_all_entries()
+            ret_form['status'] = 'SUCCESS'
+            ret_form['data'] = records
+            return json.dumps(ret_form)
+
+        if args_dict['action'] == 'register_record':
+            ret_form = {
+                'status': 'FAILURE',
+                'action': 'register_record'
             }
             # Enforce login state
             if not self.check_login(args_dict):
                 return json.dumps(ret_form)
-            if 'entry_name' not in args_dict or 'entry_key' not in args_dict:
+            if 'entry_name' not in args_dict or 'entry_url' not in args_dict or 'entry_email' not in args_dict:
                 return json.dumps(ret_form)
-            status = self.db.create_new_entry(args_dict['entry_name'], args_dict['entry_key'])
+            if args_dict['entry_url'] == "REMOVE" and args_dict['entry_email'] == "REMOVE":
+                status = self.db.remove_entry(args_dict['entry_name'])
+            else:
+                status = self.db.create_new_entry(args_dict['entry_name'], args_dict['entry_url'], args_dict['entry_email'])
             if status:
                 ret_form['status'] = 'SUCCESS'
             return json.dumps(ret_form)
@@ -84,7 +109,7 @@ class CogCompLogger:
             'result': 'none'
         }
         if 'action' not in args_dict:
-            return
+            return json.dumps(ret_form)
 
         if args_dict['action'] == 'count':
             ret_form['action'] = 'count'
@@ -96,10 +121,36 @@ class CogCompLogger:
 
         return json.dumps(ret_form)
 
+    '''
+    Handle actual logging, invoked by demos
+    '''
+    def handle_log(self):
+        args_dict = request.args
+        ret_form = {
+            'action': 'INVALID',
+            'result': 'none'
+        }
+        if 'entry_name' not in args_dict:
+            return json.dumps(ret_form)
+        if 'entry_key' not in args_dict:
+            return json.dumps(ret_form)
+        content = ""
+        if 'content' in args_dict:
+            content = args_dict['content']
+        self.db.add_new_log(
+            args_dict['entry_name'],
+            args_dict['entry_key'],
+            content
+        )
+        ret_form['result'] = 'SUCCESS'
+        return json.dumps(ret_form)
+
     def start(self, localhost=False, port=80):
-        self.app.add_url_rule("/", "", self.handle_root, methods=['POST', 'GET'])
+        self.app.add_url_rule("/", "", self.handle_index)
+        self.app.add_url_rule("/<path:path>", "<path:path>", self.handle_root)
         self.app.add_url_rule("/manage", "manage", self.handle_manage, methods=['POST', 'GET'])
         self.app.add_url_rule("/query", "query", self.handle_query, methods=['POST', 'GET'])
+        self.app.add_url_rule("/log", "log", self.handle_log, methods=['POST', 'GET'])
         if localhost:
             self.app.run(ssl_context='adhoc', port=port)
         else:
