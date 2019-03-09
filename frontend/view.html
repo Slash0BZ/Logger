@@ -28,7 +28,7 @@
     </div>
 
     <div class="row">
-        This Demo has been clicked for &nbsp;<a id="click-time"> 0 </a> &nbsp;times.
+        This Demo has been used for &nbsp;<a id="click-time"> 0 </a> &nbsp;times.
     </div>
 
     <div class="row">
@@ -149,6 +149,9 @@
 
     window.onload = function () {
         get_logs();
+        if (getCookie("cookie").length > 1) {
+            document.getElementById("logged-in").innerHTML = "<font color='green'>True</font>";
+        }
     };
 
 </script>
