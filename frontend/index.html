@@ -21,7 +21,7 @@
     </nav>
 
     <div class="row">
-        Communicating with backend: <a id="base-url">https://127.0.0.1:5000</a>
+        Communicating with backend: <a id="base-url">http://127.0.0.1:5000</a>
     </div>
     <div class="row">
         Logged in: <a id="logged-in"><font color="red">False</font></a>
@@ -137,7 +137,8 @@
 
     function render_entries_callback(result) {
         var data = result['data'];
-        console.log(data);
+        var base_url = document.getElementById("base-url").innerText;
+        var redir_url = base_url + "/view.html?name=";
         document.getElementById("manage_section_static").innerHTML = "<h4>Existing Entries</h4>";
         if (data.length > 0) {
             for (var i = 0; i < data.length; i++){
@@ -145,7 +146,7 @@
                 var name = entry['name'];
                 var url = entry['url'];
                 var email = entry['email'];
-                document.getElementById("manage_section_static").innerHTML += "<ul class='list-group'><li class='list-group-item list-group-item-primary'><b>" + name + "</b></li><li class='list-group-item'>" + url + "</li><li class='list-group-item'>" + email + "</li></ul><br>";
+                document.getElementById("manage_section_static").innerHTML += "<ul class='list-group'><li class='list-group-item list-group-item-primary'><b><a href='" + redir_url + name + "'>" + name + "</a></b></li><li class='list-group-item'>" + url + "</li><li class='list-group-item'>" + email + "</li></ul><br>";
             }
         }
     }

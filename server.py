@@ -101,60 +101,82 @@ class CogCompLogger:
 
         return json.dumps(invalid_form)
 
-    # TODO: Other queries? content?
     def handle_query(self):
-        args_dict = request.args
+        args_dict = request.values.to_dict()
+        if request.get_json() is not None:
+            args_dict.update(request.get_json())
         ret_form = {
             'action': 'INVALID',
             'result': 'none'
         }
         if 'action' not in args_dict:
             return json.dumps(ret_form)
+        if 'entry_name' not in args_dict:
+            return json.dumps(ret_form)
+        if not self.check_login(args_dict):
+            return json.dumps(ret_form)
 
         if args_dict['action'] == 'count':
             ret_form['action'] = 'count'
-            ret_form['result'] = 0
-            if 'entry_name' not in args_dict:
-                return json.dumps(ret_form)
             ret_form['result'] = self.db.get_entry_count(args_dict['entry_name'])
             return json.dumps(ret_form)
 
+        if args_dict['action'] == 'content':
+            ret_form['action'] = 'content'
+            ret_form['result'] = self.db.get_entry_content(args_dict['entry_name'])
+            return json.dumps(ret_form)
+
         return json.dumps(ret_form)
+
+    @staticmethod
+    def validate_json_format(input_string):
+        try:
+            json.loads(input_string)
+            return input_string
+        except ValueError:
+            return json.dumps({"data": input_string})
 
     '''
     Handle actual logging, invoked by demos
     '''
     def handle_log(self):
-        args_dict = request.args
+        args_dict = request.values.to_dict()
+        if request.get_json() is not None:
+            args_dict.update(request.get_json())
         ret_form = {
             'action': 'INVALID',
             'result': 'none'
         }
         if 'entry_name' not in args_dict:
             return json.dumps(ret_form)
-        if 'entry_key' not in args_dict:
-            return json.dumps(ret_form)
         content = ""
         if 'content' in args_dict:
             content = args_dict['content']
+
         self.db.add_new_log(
             args_dict['entry_name'],
-            args_dict['entry_key'],
-            content
+            # Validate everything into a valid json form
+            CogCompLogger.validate_json_format(content)
         )
         ret_form['result'] = 'SUCCESS'
         return json.dumps(ret_form)
 
-    def start(self, localhost=False, port=80):
+    def start(self, localhost=False, port=80, ssl=False):
         self.app.add_url_rule("/", "", self.handle_index)
         self.app.add_url_rule("/<path:path>", "<path:path>", self.handle_root)
         self.app.add_url_rule("/manage", "manage", self.handle_manage, methods=['POST', 'GET'])
         self.app.add_url_rule("/query", "query", self.handle_query, methods=['POST', 'GET'])
         self.app.add_url_rule("/log", "log", self.handle_log, methods=['POST', 'GET'])
-        if localhost:
-            self.app.run(ssl_context='adhoc', port=port)
+        if ssl:
+            if localhost:
+                self.app.run(ssl_context='adhoc', port=port)
+            else:
+                self.app.run(host='0.0.0.0', port=port, ssl_context='adhoc')
         else:
-            self.app.run(host='0.0.0.0', port=port, ssl_context='adhoc')
+            if localhost:
+                self.app.run(port=port)
+            else:
+                self.app.run(host='0.0.0.0', port=port)
 
     # TODO: Grace exist (release db etc.)
     def end(self):

@@ -88,7 +88,6 @@ class CogCompLoggerDB:
             ret.append(cur_entry)
         return ret
 
-    # TODO: test
     def get_entry_count(self, entry_name):
         if not os.path.isfile(self.db_loc):
             self.initialize_default_db()
@@ -100,6 +99,17 @@ class CogCompLoggerDB:
             return 0
         return int(data[0])
 
-    # TODO: get log contents, enforce correct key
-    def get_entry_logs(self, entry_name, entry_key):
-        pass
+    def get_entry_content(self, entry_name):
+        if not os.path.isfile(self.db_loc):
+            self.initialize_default_db()
+        db = self.get_db()
+        cursor = db.cursor()
+        cursor.execute("SELECT * FROM content WHERE name=?", [entry_name])
+        data = cursor.fetchall()
+        ret_dict = []
+        for content in data:
+            content_dict = {}
+            content_dict['value'] = content[2]
+            content_dict['time'] = content[3]
+            ret_dict.append(content_dict)
+        return ret_dict

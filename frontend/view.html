@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
+          integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+
+    <title>Cogcomp Logger Management</title>
+</head>
+<body>
+<div class="container">
+
+    <nav class="navbar navbar-light bg-light">
+        <a class="navbar-brand" href="./index.html">
+            Demo Logger Management Interface
+        </a>
+    </nav>
+
+    <div class="row">
+        Communicating with backend: <a id="base-url">http://127.0.0.1:5000</a>
+    </div>
+    <div class="row">
+        Logged in: <a id="logged-in"><font color="red">False</font></a>
+    </div>
+
+    <div class="row">
+        This Demo has been clicked for &nbsp;<a id="click-time"> 0 </a> &nbsp;times.
+    </div>
+
+    <div class="row">
+        <a id="data-download">Download all recorded requests</a>
+    </div>
+</div>
+
+<!-- Optional JavaScript -->
+<!-- jQuery first, then Popper.js, then Bootstrap JS -->
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js"
+        integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49"
+        crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"
+        integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy"
+        crossorigin="anonymous"></script>
+<script>
+
+
+    function setCookie(cname, cvalue, exdays) {
+        var d = new Date();
+        d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
+        var expires = "expires=" + d.toUTCString();
+        document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+    }
+
+    function getCookie(cname) {
+        var name = cname + "=";
+        var ca = document.cookie.split(';');
+        for (var i = 0; i < ca.length; i++) {
+            var c = ca[i];
+            while (c.charAt(0) == ' ') {
+                c = c.substring(1);
+            }
+            if (c.indexOf(name) == 0) {
+                return c.substring(name.length, c.length);
+            }
+        }
+        return "";
+    }
+
+    function getUrlVars() {
+        var vars = {};
+        var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function (m, key, value) {
+            vars[key] = value;
+        });
+        return vars;
+    }
+
+    function get_click_count(name) {
+        var base_url = document.getElementById("base-url").innerText;
+        var request_url = base_url + "/query?action=count";
+
+        let xhr = new XMLHttpRequest();
+        xhr.open("POST", request_url, true);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
+                var json = JSON.parse(xhr.responseText);
+                get_click_count_callback(json);
+            }
+        };
+        var data = JSON.stringify({
+            cookie: getCookie("cookie"),
+            entry_name: name,
+        });
+        xhr.send(data);
+    }
+
+    function get_click_count_callback(result) {
+        if (result['result'] != "none") {
+            document.getElementById("click-time").innerText = result['result'];
+        }
+    }
+
+    function get_content(name) {
+        var base_url = document.getElementById("base-url").innerText;
+        var request_url = base_url + "/query?action=content";
+
+        let xhr = new XMLHttpRequest();
+        xhr.open("POST", request_url, true);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
+                var json = JSON.parse(xhr.responseText);
+                get_content_callback(json);
+            }
+        };
+        var data = JSON.stringify({
+            cookie: getCookie("cookie"),
+            entry_name: name,
+        });
+        xhr.send(data);
+    }
+
+    function get_content_callback(result) {
+        if (result['result'] != "none") {
+            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(result['result']));
+            var download_button = document.getElementById("data-download");
+            download_button.setAttribute("href", dataStr);
+            download_button.setAttribute("download", "request_content.json");
+        }
+    }
+
+    function get_logs() {
+        var url_vars = getUrlVars();
+        var name = "";
+        if ('name' in url_vars){
+            name = url_vars['name'];
+        }
+        if (name != "") {
+            get_click_count(name);
+            get_content(name);
+        }
+    }
+
+    window.onload = function () {
+        get_logs();
+    };
+
+</script>
+</body>
+</html>
